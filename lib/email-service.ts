@@ -1,15 +1,7 @@
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
-// Create Gmail transporter
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  });
-};
+// Initialize SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
 // Email template for Priya's call summaries
 export function createPriyaEmailContent(callData: any, summary: string) {
@@ -122,24 +114,22 @@ Call ID: ${callData.id} | Generated at: ${new Date().toLocaleString()}
   };
 }
 
-// Send email using Gmail SMTP
+// Send email using SendGrid
 export async function sendEmail(emailContent: { subject: string; html: string; text: string }) {
   try {
-    const transporter = createTransporter();
-    
-    const mailOptions = {
-      from: `"${process.env.ASSISTANT_NAME || 'Priya'}" <${process.env.GMAIL_USER}>`,
-      to: process.env.PERSONAL_EMAIL,
+    const msg = {
+      to: process.env.SENDGRID_TO_EMAIL!,
+      from: process.env.SENDGRID_FROM_EMAIL!,
       subject: emailContent.subject,
       html: emailContent.html,
       text: emailContent.text,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    const info = await sgMail.send(msg);
+    console.log('Email sent successfully via SendGrid:', info[0].statusCode);
+    return { success: true, messageId: info[0].headers['x-message-id'] };
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error sending email via SendGrid:', error);
     throw new Error('Failed to send email');
   }
 }
@@ -147,11 +137,18 @@ export async function sendEmail(emailContent: { subject: string; html: string; t
 // Test email function
 export async function testEmailConnection() {
   try {
-    const transporter = createTransporter();
-    await transporter.verify();
-    return { success: true, message: 'Email connection verified' };
+    // Test SendGrid connection by sending a test email
+    const testMsg = {
+      to: process.env.SENDGRID_TO_EMAIL!,
+      from: process.env.SENDGRID_FROM_EMAIL!,
+      subject: 'Test from Priya',
+      text: 'This is a test email from Priya to verify SendGrid connection.',
+    };
+
+    await sgMail.send(testMsg);
+    return { success: true, message: 'SendGrid connection verified' };
   } catch (error) {
-    console.error('Email connection test failed:', error);
+    console.error('SendGrid connection test failed:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 } 

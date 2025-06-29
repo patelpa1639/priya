@@ -63,12 +63,12 @@ Generated at: ${new Date().toLocaleString()}
       `,
     };
 
-    // Send the email using Gmail SMTP
+    // Send the email using SendGrid
     const result = await sendEmail(emailContent);
 
     return NextResponse.json({
       success: true,
-      message: 'Email sent successfully by Priya',
+      message: 'Email sent successfully by Priya via SendGrid',
       messageId: result.messageId,
       timestamp: new Date().toISOString(),
       assistant: process.env.ASSISTANT_NAME || 'Priya',
