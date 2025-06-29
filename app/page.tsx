@@ -150,14 +150,19 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 p-8">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Google Calendar API Integration
-          </h1>
-          <p className="text-lg text-gray-600">
-            Create and manage calendar events using OAuth2 with refresh tokens
+          <div className="mb-6">
+            <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-4">
+              🤖 Priya
+            </h1>
+            <p className="text-xl text-gray-600">
+              Your Personal AI Assistant
+            </p>
+          </div>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            I handle your calls, schedule meetings, and keep you organized. Connect your Google Calendar to get started!
           </p>
         </div>
 
@@ -172,34 +177,44 @@ export default function Home() {
         )}
 
         {!isAuthenticated ? (
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <h2 className="text-2xl font-semibold mb-4">Authentication Required</h2>
-            <p className="text-gray-600 mb-6">
-              You need to authenticate with Google to access your calendar.
-            </p>
+          <div className="bg-white rounded-xl shadow-xl p-8 text-center max-w-md mx-auto">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🤖</span>
+              </div>
+              <h2 className="text-2xl font-semibold mb-4">Connect Your Calendar</h2>
+              <p className="text-gray-600 mb-6">
+                Let me help you manage your schedule and handle your calls efficiently.
+              </p>
+            </div>
             <button
               onClick={getAuthUrl}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-purple-400 disabled:to-pink-400 text-white font-semibold py-3 px-8 rounded-lg transition-all transform hover:scale-105 disabled:transform-none"
             >
-              {loading ? 'Loading...' : 'Connect Google Calendar'}
+              {loading ? 'Connecting...' : 'Connect Google Calendar'}
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Create Event Form */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-semibold mb-6">Create New Event</h2>
+            <div className="bg-white rounded-xl shadow-xl p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-lg">📅</span>
+                </div>
+                <h2 className="text-2xl font-semibold">Schedule Meeting</h2>
+              </div>
               <form onSubmit={createEvent} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Event Title *
+                    Meeting Title *
                   </label>
                   <input
                     type="text"
                     value={newEvent.summary}
                     onChange={(e) => setNewEvent({ ...newEvent, summary: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -211,7 +226,7 @@ export default function Home() {
                   <textarea
                     value={newEvent.description}
                     onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     rows={3}
                   />
                 </div>
@@ -225,7 +240,7 @@ export default function Home() {
                       type="datetime-local"
                       value={newEvent.startDateTime}
                       onChange={(e) => setNewEvent({ ...newEvent, startDateTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -238,7 +253,7 @@ export default function Home() {
                       type="datetime-local"
                       value={newEvent.endDateTime}
                       onChange={(e) => setNewEvent({ ...newEvent, endDateTime: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -252,7 +267,7 @@ export default function Home() {
                     type="text"
                     value={newEvent.attendees}
                     onChange={(e) => setNewEvent({ ...newEvent, attendees: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                     placeholder="email1@example.com, email2@example.com"
                   />
                 </div>
@@ -260,21 +275,26 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-green-400 disabled:to-emerald-400 text-white font-semibold py-3 px-6 rounded-lg transition-all transform hover:scale-105 disabled:transform-none"
                 >
-                  {loading ? 'Creating...' : 'Create Event'}
+                  {loading ? 'Scheduling...' : 'Schedule Meeting'}
                 </button>
               </form>
             </div>
 
             {/* Events List */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="bg-white rounded-xl shadow-xl p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold">Your Events</h2>
+                <div className="flex items-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-lg">📋</span>
+                  </div>
+                  <h2 className="text-2xl font-semibold">Your Schedule</h2>
+                </div>
                 <button
                   onClick={loadEvents}
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-400 disabled:to-indigo-400 text-white font-semibold py-2 px-4 rounded-lg transition-all"
                 >
                   {loading ? 'Loading...' : 'Refresh'}
                 </button>
@@ -282,15 +302,21 @@ export default function Home() {
               
               <div className="space-y-4">
                 {events.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">No events found</p>
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-2xl text-gray-400">📅</span>
+                    </div>
+                    <p className="text-gray-500">No meetings scheduled yet</p>
+                    <p className="text-sm text-gray-400 mt-2">I'll help you schedule meetings when calls come in!</p>
+                  </div>
                 ) : (
                   events.map((event) => (
-                    <div key={event.id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={event.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg">{event.summary}</h3>
+                        <h3 className="font-semibold text-lg text-gray-800">{event.summary}</h3>
                         <button
                           onClick={() => deleteEvent(event.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          className="text-red-600 hover:text-red-800 text-sm font-medium hover:bg-red-50 px-2 py-1 rounded transition-colors"
                         >
                           Delete
                         </button>
@@ -322,6 +348,13 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Footer */}
+        <div className="mt-12 text-center">
+          <p className="text-gray-500 text-sm">
+            Powered by Priya - Your Personal AI Assistant 🤖
+          </p>
+        </div>
       </div>
     </div>
   );

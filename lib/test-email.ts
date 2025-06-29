@@ -1,11 +1,15 @@
-// Test utility for sending emails via the API endpoint
+// Test utility for sending emails via the API endpoint - customized for Priya
 
-export const sampleSummary = `Customer called regarding order #12345 status inquiry. 
-The order was placed on March 15th and is currently being processed. 
-Estimated shipping date is March 20th with delivery by March 22nd. 
-Customer expressed concern about needing the laptop for work next week. 
-Confirmation email was sent to john.doe@example.com. 
-No additional action items required.`;
+export const sampleSummary = `Hi! This is ${process.env.ASSISTANT_NAME || 'Priya'}. I just handled a call for you.
+
+The caller was asking about scheduling a meeting for next week. They mentioned they're available on Tuesday and Thursday afternoon. I told them I'd check your calendar and get back to them.
+
+Key points:
+- Meeting request for next week
+- Tuesday or Thursday afternoon preferred
+- They'll wait for your confirmation
+
+I've noted this in your calendar and will follow up with them once you confirm your availability.`;
 
 // Function to test email sending
 export async function testEmailSending(summary: string = sampleSummary) {
