@@ -44,6 +44,7 @@ interface VapiWebhookPayload {
     role: string;
     message: string;
   }[];
+  endedReason?: string;
 }
 
 // Function to summarize transcript using OpenAI - customized for Priya
@@ -127,8 +128,21 @@ export async function POST(request: NextRequest) {
       callDataKeys: Object.keys(callData),
     });
 
-    // Only process webhooks that contain call completion data
-    if (!callData.transcript && !callData.summary) {
+    // Extract call status and check for call ending conditions
+    const callStatus = callData.call?.status || callData.status;
+    const endedReason = callData.endedReason;
+    const duration = callData.durationSeconds || callData.duration;
+    
+    // Check if call has ended or should be considered complete
+    const isCallComplete = 
+      callStatus === 'completed' || 
+      callStatus === 'ended' || 
+      endedReason === 'user-hangup' ||
+      endedReason === 'assistant-hangup' ||
+      (duration && duration > 30); // Consider calls longer than 30 seconds as complete
+
+    // Only process webhooks that contain call completion data or have transcripts
+    if (!callData.transcript && !callData.summary && !isCallComplete) {
       console.log('Skipping real-time message webhook - waiting for call completion');
       return NextResponse.json({
         success: true,
@@ -136,15 +150,15 @@ export async function POST(request: NextRequest) {
         bodyKeys: Object.keys(body),
         hasMessageField: !!body.message,
         callDataKeys: Object.keys(callData),
+        callStatus,
+        isCallComplete,
       });
     }
 
     // Extract data from Vapi's actual structure
     const callId = callData.call?.id || callData.id;
-    const callStatus = callData.call?.status || callData.status;
     const transcript = callData.transcript; // This is at root level
     const vapiSummary = callData.summary; // This is at root level
-    const duration = callData.durationSeconds || callData.duration;
     const recordingUrl = callData.recordingUrl;
     
     // Extract caller information from customer field
@@ -178,6 +192,8 @@ export async function POST(request: NextRequest) {
     console.log('Processed Vapi webhook data:', {
       callId,
       callStatus,
+      endedReason,
+      isCallComplete,
       hasTranscript: !!fullTranscript,
       transcriptLength: fullTranscript?.length || 0,
       hasVapiSummary: !!vapiSummary,
@@ -187,36 +203,40 @@ export async function POST(request: NextRequest) {
       callerName,
     });
 
-    // Process calls that have transcripts (completed or have conversation data)
-    if (!fullTranscript) {
-      console.log('Skipping webhook - no transcript available');
+    // Process calls that have transcripts or are complete
+    if (!fullTranscript && !isCallComplete) {
+      console.log('Skipping webhook - no transcript available and call not complete');
       return NextResponse.json({
         success: true,
-        message: 'No transcript available',
+        message: 'No transcript available and call not complete',
         callId,
         status: callStatus,
         hasTranscript: false,
+        isCallComplete: false,
       });
     }
 
     // Use Vapi's summary if available, otherwise generate our own
     let summary = vapiSummary;
-    if (!summary) {
+    if (!summary && fullTranscript) {
       console.log('Generating AI summary for call:', callId);
       const callerInfo = callerName !== 'Unknown' 
         ? `${callerName} (${callerNumber})`
         : callerNumber || 'Unknown caller';
       summary = await summarizeTranscript(fullTranscript, callerInfo);
-    } else {
+    } else if (summary) {
       console.log('Using Vapi-generated summary for call:', callId);
+    } else {
+      // If no transcript and no summary, create a basic summary
+      summary = `Call received but no conversation transcript available. Call status: ${callStatus}, Duration: ${duration} seconds`;
     }
 
     // Create enhanced call data for email
     const enhancedCallData = {
       ...callData,
       id: callId,
-      status: 'completed',
-      transcript: fullTranscript,
+      status: isCallComplete ? 'completed' : callStatus,
+      transcript: fullTranscript || 'No transcript available',
       caller: {
         name: callerName,
         number: callerNumber,
@@ -242,6 +262,8 @@ export async function POST(request: NextRequest) {
       assistant: process.env.ASSISTANT_NAME || 'Priya',
       caller: callerNumber,
       duration: duration,
+      callStatus: isCallComplete ? 'completed' : callStatus,
+      isCallComplete,
     });
 
   } catch (error) {
