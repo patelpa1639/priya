@@ -151,8 +151,8 @@ export async function POST(request: NextRequest) {
     // Send email + Telegram in parallel
     console.log('Sending notifications for call:', callId);
     const telegramText = formatCallForTelegram(enhancedCallData, summary);
-    await Promise.all([
-      sendEmail(emailContent),
+    await Promise.allSettled([
+      sendEmail(emailContent).catch(err => console.error('Email failed (non-fatal):', err)),
       process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID
         ? sendTelegramMessage(telegramText).catch(err => console.error('Telegram failed (non-fatal):', err))
         : Promise.resolve(),
