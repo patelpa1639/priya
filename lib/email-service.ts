@@ -1,7 +1,14 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+// Lazy-init so the build doesn't crash when env vars are missing
+let _sgInitialized = false;
+function getSgMail() {
+  if (!_sgInitialized) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+    _sgInitialized = true;
+  }
+  return sgMail;
+}
 
 // Email template for Priya's call summaries
 export function createPriyaEmailContent(callData: any, summary: string) {
@@ -129,7 +136,7 @@ export async function sendEmail(emailContent: { subject: string; html: string; t
       text: emailContent.text,
     };
 
-    const info = await sgMail.send(msg);
+    const info = await getSgMail().send(msg);
     console.log('Email sent successfully via SendGrid:', info[0].statusCode);
     return { success: true, messageId: info[0].headers['x-message-id'] };
   } catch (error) {
@@ -149,7 +156,7 @@ export async function testEmailConnection() {
       text: 'This is a test email from Priya to verify SendGrid connection.',
     };
 
-    await sgMail.send(testMsg);
+    await getSgMail().send(testMsg);
     return { success: true, message: 'SendGrid connection verified' };
   } catch (error) {
     console.error('SendGrid connection test failed:', error);
