@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { sendEmail, createPriyaEmailContent } from '@/lib/email-service';
-import { sendTelegramMessage, formatCallForTelegram } from '@/lib/telegram';
+import { sendTelegramMessage, formatCallForTelegram, sendMissedCallAlert } from '@/lib/telegram';
+import { getCallerProfile, upsertCallerProfile, logCall } from '@/lib/redis';
 
 // Lazy-init so the build doesn't crash when env vars are missing
 let _openai: OpenAI | null = null;
@@ -104,53 +105,90 @@ export async function POST(request: NextRequest) {
         .join('\n');
     }
 
+    // ── Missed call detection ──────────────────────────────
+    const isMissedCall = !fullTranscript && (!duration || duration < 10);
+    if (isMissedCall) {
+      console.log('Missed call detected from:', callerNumber);
+
+      // Check if we know this caller
+      let knownName = callerName;
+      if (callerNumber && process.env.UPSTASH_REDIS_REST_URL) {
+        const profile = await getCallerProfile(callerNumber).catch(() => null);
+        if (profile && profile.name !== 'Unknown') knownName = profile.name;
+      }
+
+      // Log missed call + send alert
+      await Promise.allSettled([
+        callerNumber && process.env.UPSTASH_REDIS_REST_URL
+          ? logCall({ callId, callerName: knownName, callerNumber, summary: 'Missed call', duration: 0, timestamp: new Date().toISOString(), missed: true }).catch(() => {})
+          : Promise.resolve(),
+        sendMissedCallAlert(knownName, callerNumber || 'Unknown number').catch(err => console.error('Missed call alert failed:', err)),
+      ]);
+
+      return NextResponse.json({ success: true, message: 'Missed call alert sent', callId });
+    }
+
+    // ── Caller memory ──────────────────────────────────────
+    let callerProfile = null;
+    if (callerNumber && process.env.UPSTASH_REDIS_REST_URL) {
+      callerProfile = await getCallerProfile(callerNumber).catch(() => null);
+      // Use remembered name if we don't have one from this call
+      if (callerName === 'Unknown' && callerProfile?.name && callerProfile.name !== 'Unknown') {
+        callerName = callerProfile.name;
+      }
+    }
+
     console.log('Processing end-of-call-report:', {
-      callId,
-      callStatus,
-      endedReason,
+      callId, callStatus, endedReason,
       hasTranscript: !!fullTranscript,
-      transcriptLength: fullTranscript?.length || 0,
-      hasVapiSummary: !!vapiSummary,
-      duration,
-      callerNumber,
-      callerName,
+      duration, callerNumber, callerName,
+      isRepeatCaller: callerProfile ? callerProfile.callCount > 0 : false,
     });
 
     // Use Vapi's summary if available, otherwise generate our own
     let summary = vapiSummary;
     if (!summary && fullTranscript) {
-      console.log('Generating AI summary for call:', callId);
-      const callerInfo = callerName !== 'Unknown' 
+      const callerInfo = callerName !== 'Unknown'
         ? `${callerName} (${callerNumber})`
         : callerNumber || 'Unknown caller';
       summary = await summarizeTranscript(fullTranscript, callerInfo);
-    } else if (summary) {
-      console.log('Using Vapi-generated summary for call:', callId);
-    } else {
-      // If no transcript and no summary, create a basic summary
+    } else if (!summary) {
       summary = `Call received but no conversation transcript available. Call status: ${callStatus}, Duration: ${duration} seconds`;
     }
 
-    // Create enhanced call data for email
+    // ── Update caller memory + log call ────────────────────
+    if (callerNumber && process.env.UPSTASH_REDIS_REST_URL) {
+      const shortNote = summary.length > 120 ? summary.slice(0, 120) + '…' : summary;
+      await Promise.allSettled([
+        upsertCallerProfile(callerNumber, callerName, shortNote).catch(() => {}),
+        logCall({
+          callId, callerName, callerNumber, summary: shortNote,
+          duration: duration || 0,
+          timestamp: new Date().toISOString(),
+          missed: false,
+        }).catch(() => {}),
+      ]);
+    }
+
+    // Create enhanced call data
     const enhancedCallData = {
       ...callData,
       id: callId,
       status: 'completed',
       transcript: fullTranscript || 'No transcript available',
-      caller: {
-        name: callerName,
-        number: callerNumber,
-      },
+      caller: { name: callerName, number: callerNumber },
       durationSeconds: duration,
       created_at: callData.call?.createdAt || new Date().toISOString(),
     };
 
-    // Create email content using Priya's template
-    const emailContent = createPriyaEmailContent(enhancedCallData, summary);
+    // Build Telegram message — include repeat caller context
+    const repeatInfo = callerProfile && callerProfile.callCount > 0
+      ? `🔁 _Repeat caller (${callerProfile.callCount} previous calls)_`
+      : null;
+    const telegramText = formatCallForTelegram(enhancedCallData, summary, repeatInfo);
 
     // Send email + Telegram in parallel
-    console.log('Sending notifications for call:', callId);
-    const telegramText = formatCallForTelegram(enhancedCallData, summary);
+    const emailContent = createPriyaEmailContent(enhancedCallData, summary);
     await Promise.allSettled([
       sendEmail(emailContent).catch(err => console.error('Email failed (non-fatal):', err)),
       process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID
@@ -158,15 +196,9 @@ export async function POST(request: NextRequest) {
         : Promise.resolve(),
     ]);
 
-    // Return success response
     return NextResponse.json({
-      success: true,
-      message: 'Webhook processed successfully by Priya',
-      callId,
-      summaryGenerated: true,
-      emailSent: true,
-      caller: callerNumber,
-      duration,
+      success: true, message: 'Webhook processed by Priya',
+      callId, caller: callerNumber, duration,
     });
 
   } catch (error) {

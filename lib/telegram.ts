@@ -26,12 +26,62 @@ export async function sendTelegramMessage(text: string): Promise<void> {
   console.log('Telegram message sent successfully');
 }
 
+export async function sendMissedCallAlert(callerName: string, callerNumber: string): Promise<void> {
+  const lines = [
+    `🚨 *Missed Call!*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    ``,
+    `👤 *From:* ${callerName !== 'Unknown' ? callerName : 'Unknown Caller'}`,
+    `📱 *Number:* \`${callerNumber}\``,
+    `🕐 *Time:* ${new Date().toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' })}`,
+    ``,
+    `_They hung up before Priya could chat. You might want to call back!_ 📲`,
+  ];
+  await sendTelegramMessage(lines.join('\n'));
+}
+
+export function formatDailyDigest(calls: { callerName: string; callerNumber: string; summary: string; duration: number; missed: boolean; timestamp: string }[]): string {
+  const completed = calls.filter(c => !c.missed);
+  const missed = calls.filter(c => c.missed);
+
+  const lines = [
+    `☀️ *Priya — Daily Call Digest*`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    ``,
+    `📊 *${calls.length} total* — ${completed.length} handled, ${missed.length} missed`,
+    ``,
+  ];
+
+  if (completed.length > 0) {
+    lines.push(`✅ *Calls Handled*`, ``);
+    completed.forEach((c, i) => {
+      const name = c.callerName !== 'Unknown' ? c.callerName : c.callerNumber;
+      const dur = c.duration > 60 ? `${Math.floor(c.duration / 60)}m` : `${c.duration}s`;
+      lines.push(`${i + 1}. *${name}* (${dur})`);
+      lines.push(`   ${c.summary}`);
+      lines.push(``);
+    });
+  }
+
+  if (missed.length > 0) {
+    lines.push(`❌ *Missed Calls*`, ``);
+    missed.forEach(c => {
+      const name = c.callerName !== 'Unknown' ? c.callerName : c.callerNumber;
+      lines.push(`  ▸ ${name} — \`${c.callerNumber}\``);
+    });
+    lines.push(``);
+  }
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━`, `_Your daily brief from Priya_ 🤖✨`);
+  return lines.join('\n');
+}
+
 export function formatCallForTelegram(callData: {
   caller?: { name?: string; number?: string };
   durationSeconds?: number;
   transcript?: string;
   created_at?: string;
-}, summary: string): string {
+}, summary: string, repeatInfo?: string | null): string {
   const callerName = callData.caller?.name && callData.caller.name !== 'Unknown'
     ? callData.caller.name
     : null;
@@ -55,6 +105,7 @@ export function formatCallForTelegram(callData: {
     `📱 *Number:* \`${callerNumber}\``,
     `🕐 *Time:* ${time}`,
     `⏱ *Duration:* ${duration}`,
+    ...(repeatInfo ? [repeatInfo] : []),
     ``,
     `━━━━━━━━━━━━━━━━━━━━`,
     `💡 *Summary*`,

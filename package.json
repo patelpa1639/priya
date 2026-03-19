@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
+    "@upstash/redis": "^1.37.0",
     "googleapis": "^150.0.1",
     "next": "15.3.8",
     "openai": "^5.8.2",
