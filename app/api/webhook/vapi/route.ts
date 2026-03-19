@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { sendEmail, createPriyaEmailContent } from '@/lib/email-service';
-import { sendTelegramMessage, formatCallForTelegram, sendMissedCallAlert } from '@/lib/telegram';
+import { sendTelegramMessage, formatCallForTelegram, sendMissedCallAlert, TOPICS } from '@/lib/telegram';
 import { getCallerProfile, upsertCallerProfile, logCall } from '@/lib/redis';
 
 // Lazy-init so the build doesn't crash when env vars are missing
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
     await Promise.allSettled([
       sendEmail(emailContent).catch(err => console.error('Email failed (non-fatal):', err)),
       process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID
-        ? sendTelegramMessage(telegramText).catch(err => console.error('Telegram failed (non-fatal):', err))
+        ? sendTelegramMessage(telegramText, TOPICS.CALL_SUMMARIES).catch(err => console.error('Telegram failed (non-fatal):', err))
         : Promise.resolve(),
     ]);
 

@@ -1,4 +1,11 @@
-export async function sendTelegramMessage(text: string): Promise<void> {
+// Topic thread IDs for PriyaHQ group
+export const TOPICS = {
+  CALL_SUMMARIES: 2,
+  MISSED_CALLS: 3,
+  DAILY_DIGEST: 4,
+} as const;
+
+export async function sendTelegramMessage(text: string, topicId?: number): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
@@ -7,14 +14,21 @@ export async function sendTelegramMessage(text: string): Promise<void> {
     return;
   }
 
+  const payload: Record<string, any> = {
+    chat_id: chatId,
+    text,
+    parse_mode: 'Markdown',
+  };
+
+  // Route to topic if we have a topic ID and the chat is a forum group
+  if (topicId) {
+    payload.message_thread_id = topicId;
+  }
+
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: 'Markdown',
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -23,7 +37,7 @@ export async function sendTelegramMessage(text: string): Promise<void> {
     throw new Error(`Telegram send failed: ${res.status}`);
   }
 
-  console.log('Telegram message sent successfully');
+  console.log('Telegram message sent to topic:', topicId || 'default');
 }
 
 export async function sendMissedCallAlert(callerName: string, callerNumber: string): Promise<void> {
@@ -37,7 +51,7 @@ export async function sendMissedCallAlert(callerName: string, callerNumber: stri
     ``,
     `_They hung up before Priya could chat. You might want to call back!_ 📲`,
   ];
-  await sendTelegramMessage(lines.join('\n'));
+  await sendTelegramMessage(lines.join('\n'), TOPICS.MISSED_CALLS);
 }
 
 export function formatDailyDigest(calls: { callerName: string; callerNumber: string; summary: string; duration: number; missed: boolean; timestamp: string }[]): string {

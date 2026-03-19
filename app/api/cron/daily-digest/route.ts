@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDailyLogs, clearDailyLogs } from '@/lib/redis';
-import { sendTelegramMessage, formatDailyDigest } from '@/lib/telegram';
+import { sendTelegramMessage, formatDailyDigest, TOPICS } from '@/lib/telegram';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,13 +16,14 @@ export async function GET(request: NextRequest) {
     if (calls.length === 0) {
       // Send a quiet "no calls" message
       await sendTelegramMessage(
-        `☀️ *Priya — Daily Digest*\n━━━━━━━━━━━━━━━━━━━━\n\nNo calls yesterday. Quiet day! 😌\n\n_Your daily brief from Priya_ 🤖✨`
+        `☀️ *Priya — Daily Digest*\n━━━━━━━━━━━━━━━━━━━━\n\nNo calls yesterday. Quiet day! 😌\n\n_Your daily brief from Priya_ 🤖✨`,
+        TOPICS.DAILY_DIGEST,
       );
       return NextResponse.json({ success: true, message: 'No calls to report' });
     }
 
     const digest = formatDailyDigest(calls);
-    await sendTelegramMessage(digest);
+    await sendTelegramMessage(digest, TOPICS.DAILY_DIGEST);
 
     // Clear the logs after sending
     await clearDailyLogs();
